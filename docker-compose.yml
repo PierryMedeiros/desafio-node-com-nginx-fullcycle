@@ -1,0 +1,51 @@
+version: '3'
+
+networks:
+  node-network:
+    driver: bridge
+
+services:
+
+  #nginx:
+
+  app:
+    build:
+      context: appNode
+    container_name: app
+    entrypoint: wait-for db:3306 -t 50 -- ./start.sh
+    networks: 
+      - node-network
+    volumes:
+      - ./appNode:/usr/src/app
+    tty: true
+    depends_on:
+      - db
+
+  db:
+    image: mysql:5.7
+    command: --innodb-use-native-aio=0
+    container_name: db
+    restart: always
+    tty: true
+    volumes:
+      - mysql:/var/lib/mysql
+    environment:
+      - MYSQL_DATABASE=nodedb
+      - MYSQL_ROOT_PASSWORD=root
+    networks:
+      - node-network
+  
+  nginx:  
+    build:
+      context: ./nginx
+    container_name: nginx
+    networks:
+      - node-network
+    ports:  
+      - "8080:80"
+    depends_on:
+      - app
+
+volumes:
+  mysql:
+    driver: local
