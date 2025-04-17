@@ -1,25 +1,17 @@
 version: '3'
-
-networks:
-  node-network:
-    driver: bridge
-
 services:
-
-  #nginx:
-
   app:
     build:
       context: appNode
     container_name: app
-    entrypoint: wait-for db:3306 -t 50 -- ./start.sh
-    networks: 
-      - node-network
+    command: ["node", "index"]
     volumes:
       - ./appNode:/usr/src/app
+      - /usr/src/app/node_modules
     tty: true
     depends_on:
-      - db
+      db:
+        condition: service_healthy
 
   db:
     image: mysql:5.7
@@ -32,15 +24,16 @@ services:
     environment:
       - MYSQL_DATABASE=nodedb
       - MYSQL_ROOT_PASSWORD=root
-    networks:
-      - node-network
+    healthcheck:
+      test: ["CMD", "mysqladmin", "ping", "-h", "localhost", "-u", "root", "-p$$MYSQL_ROOT_PASSWORD"]
+      interval: 5s
+      timeout: 10s
+      retries: 3
   
   nginx:  
     build:
       context: ./nginx
     container_name: nginx
-    networks:
-      - node-network
     ports:  
       - "8080:80"
     depends_on:
